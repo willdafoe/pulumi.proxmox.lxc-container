@@ -1,0 +1,3 @@
+name: pulumi.proxmox.lxc
+runtime: python
+description: A Pulumi project for deploying LXC containers on Proxmox using the API and dynamic providers

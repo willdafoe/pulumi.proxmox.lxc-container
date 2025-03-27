@@ -3,5 +3,5 @@ config:
   proxmox:user: cicd@pve
   proxmox:token_id: test
   proxmox:token_secret:
-    secure: AAABAKsOW9Ql7c3mgU1i52dqSDVhxQoNJC1jR15Z2lIBX6BxY2B+r3D1C99nJKflgO72JtzH9JxtShhgtrSJMVCqIhc=
+    secure: AAABAAR9HXsEO+jHkLjgT3x5MlG20ynp35LNhiMCj0UoNRbQ4f0dbibVo0L8B2kboBUEv9d2C0OQAmntkgTXC3r6bOE=
   proxmox:node: hades

@@ -1,5 +1,5 @@
 PROJECT_NAME = pulumi.proxmox.lxc
-STACK_NAME = willdafoe/homelab
+STACK_NAME = willdafoe/test
 
 all: install lint preview
 

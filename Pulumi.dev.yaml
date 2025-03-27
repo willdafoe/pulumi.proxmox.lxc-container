@@ -1,0 +1,7 @@
+config:
+  proxmox:host: 10.1.0.148
+  proxmox:user: cicd@pve
+  proxmox:token_id: cicd
+  proxmox:token_secret:
+    secure: AAABAJmM72dTVHvnctY354sVFfpUFYL6ES8dQPJjcmZUILcY/ByWvp6R1GEk2aB7PDX9Btk043HsXpxat0lLSc+wKFI=
+  proxmox:node: hades

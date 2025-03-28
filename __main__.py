@@ -24,3 +24,9 @@ container = LXCContainer(
     node=cfg.require("node"),
     params=vm_params
 )
+
+# Export outputs for external tools like Ansible, CI/CD, etc.
+pulumi.export("vmid", container.vmid)
+pulumi.export("hostname", container.hostname)
+pulumi.export("node", container.node)
+pulumi.export("ip_address", container.ip_address)

@@ -5,18 +5,6 @@ from proxmox_api import ProxmoxAPI
 
 class LXCProvider(ResourceProvider):
     def create(self, props):
-        # Force sanitize numeric values
-        params = props["params"].copy()
-
-        for key in ["vmid", "memory", "cores", "swap"]:
-            if key in params:
-                try:
-                    params[key] = int(float(params[key]))
-                except (ValueError, TypeError):
-                    raise Exception(f"Parameter '{key}' must be castable to integer, got: {params[key]}")
-
-        vmid = int(float(props["vmid"]))
-
         api = ProxmoxAPI(
             host=props["host"],
             user=props["user"],
@@ -25,8 +13,28 @@ class LXCProvider(ResourceProvider):
             node=props["node"]
         )
 
+        # Auto-assign vmid if not provided
+        if "vmid" in props and props["vmid"] is not None:
+            vmid = int(float(props["vmid"]))
+        else:
+            vmid = api.get_next_vmid(starting_from=200)
+            props["vmid"] = vmid
+
+        # Normalize numeric params
+        params = props["params"].copy()
+        for key in ["memory", "cores", "swap"]:
+            if key in params:
+                try:
+                    params[key] = int(float(params[key]))
+                except (ValueError, TypeError):
+                    raise Exception(f"Param '{key}' must be castable to int, got: {params[key]}")
+
         pulumi.log.info(f"Creating LXC container {vmid} on node {props['node']}")
         api.create_lxc(vmid, params)
+
+        pulumi.log.info(f"Starting LXC container {vmid}...")
+        api.start_lxc(vmid)
+
         return CreateResult(id_=f"{props['node']}-{vmid}", outs=props)
 
 

@@ -1,3 +1,4 @@
+ansible_playbook: playbooks/configure_container.yml
 bridge: vmbr0
 cidr: '28'
 cores: 1

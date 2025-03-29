@@ -1,0 +1,5 @@
+- name: Configure UniFi Controller
+  hosts: container
+  become: yes
+  roles:
+    - role: unifi.controller

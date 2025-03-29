@@ -1,109 +1,94 @@
-# 🐍 Pulumi Proxmox LXC (Python Runtime)
+🐍 Pulumi Proxmox LXC (Python Runtime)
 
 Manage LXC containers on a Proxmox VE host using Pulumi, with full support for static IP assignment, dynamic configuration, and flexible bootstrapping.
 
----
+🚀 Features
 
-## 🚀 Features
+🔒 API Token authentication (no passwords!)
+⚙️ Create, Start, Stop, Delete LXC containers
+📡 Static IP and DHCP support via net0
+🔁 Auto-assign or manually specify VMID
+🧠 Intelligent IP wait + retry before Ansible
+🛠 Accept VM configuration via:
+✅ CLI arguments
+✅ Environment variables
+✅ YAML/JSON config files
+📤 Pulumi exports: vmid, hostname, node, ip_address
+🧪 Optional Ansible integration post-deploy
+🧹 Automatic inventory file generation
+📦 Requirements
 
-- 🔒 Auth via API Token
-- ⚙️ Create/Start/Stop/Delete LXC containers
-- 📡 Static IP support with Pulumi outputs
-- 🔁 Auto-assign or specify VMID
-- 📥 Accept container params via:
-  - CLI arguments
-  - Environment variables
-  - YAML or JSON config files
-- 📤 Pulumi exports: `vmid`, `hostname`, `node`, `ip_address`
+🧠 Proxmox VE host with API token access
+🐍 Python 3.8+
+🧰 Pulumi CLI
+🔐 Proxmox user + token with permissions (see ansible/ role)
+🔐 Pulumi Config Setup
 
----
-
-## 📦 Requirements
-
-- 🧠 Proxmox VE host with API access and API token
-- 🐍 Python 3.8+
-- 🧰 Pulumi CLI
-- 🔑 Proxmox user with appropriate permissions (see role setup in `ansible/`)
-
----
-
-## 🔐 Pulumi Config Setup
-
-```bash
 pulumi config set proxmox:host 10.1.0.148
 pulumi config set proxmox:user cicd@pve
 pulumi config set proxmox:token_id cicd
 pulumi config set --secret proxmox:token_secret your-token-secret
 pulumi config set proxmox:node hades
-```
-
 🧠 Usage Options
 
-🔨 1. Run Bootstrap Script (Preferred)
-```bash
-./bootstrap.py --hostname redis01 --ip 10.1.0.123 --gw 10.1.0.1 --stack organization/stackname
-```
-Or use env vars:
-```bash
-export VM_HOSTNAME=redis01
-export VM_IP=10.1.0.123
-./bootstrap.py
-```
-Or use a YAML config:
-```bash
-# vm_params.yaml
+🔨 1. Use the Typer CLI (Recommended)
+Generate, deploy, and run Ansible in one shot:
+
+./cli.py deploy --run-ansible
+Or customize it:
+
+./cli.py deploy --params-file pulumi/vm_params.yaml
+Update outputs or destroy:
+
+./cli.py outputs
+./cli.py destroy
+📦 Example vm_params.yaml
 hostname: redis01
 ip: 10.1.0.123
 cidr: 24
 gw: 10.1.0.1
 memory: 1024
 cores: 2
+swap: 512
 rootfs: local:8
-./bootstrap.py --params-file vm_params.yaml
-```
-This script will:
-
-* Generate __main__.py
-* Write vm_params.yaml
-* Deploy using pulumi up
-
-🧱 2. Manual Deployment
-```bash
-make install     # installs Python deps
-make up          # runs `pulumi up`
-make destroy     # destroys the container
-```
-
+ostemplate: local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
+bridge: vmbr0
+password: changeme
+🧱 2. Manual Makefile Deployment
+make install     # install Python + Pulumi deps
+make up          # run Pulumi deployment
+make destroy     # nuke it from orbit
 📁 Project Structure
 
 File / Dir	Description
-```bash
-lxc_container.py	Dynamic Pulumi provider for LXC
-proxmox_api.py	    Token-based Proxmox API wrapper
-__main__.py	        Loads dynamic config from vm_params.yaml
-bootstrap.py	    Bootstraps the project from CLI/env/file
-vm_params.yaml	    Generated container config
-```
+pulumi/__main__.py	Dynamically generated deployment script
+pulumi/lxc_container.py	Dynamic Pulumi provider for LXC
+pulumi/proxmox_api.py	Token-authenticated API client
+pulumi/bootstrap.py	Generate config + deploy Pulumi stack
+pulumi/cli.py	Typer-based CLI for full control
+pulumi/vm_params.yaml	Input file for container settings
+ansible/site.yml	Post-deploy configuration (e.g. UniFi)
+ansible/roles/	Ansible roles (e.g. unifi.controller)
+ansible/inventory.ini	Dynamically written by CLI
 💡 Optional Stack File: Pulumi.dev.yaml
 
-```bash
 config:
   proxmox:host: 10.1.0.148
   proxmox:user: cicd@pve
   proxmox:token_id: cicd
-  proxmox:node: proxmox-node
+  proxmox:node: hades
   proxmox:token_secret:
-    secure: <your-base64-encrypted-secret>
-```
+    secure: <your-encrypted-token>
 🧼 Clean Up
-```
-make destroy
-```
+
+./cli.py destroy
+pulumi stack rm willdafoe/dev
 🧪 Coming Soon?
 
-* VM support via qemu
-* Container snapshotting
-* Pre/post deployment hooks (e.g. run Ansible after deploy)
-* Built for controlled chaos in your homelab.
-
+🔄 LXC snapshotting support
+💣 Chaos testing hooks
+☁️ QEMU VM support
+🔗 Pre/Post hook automation
+🧭 GUI frontend for multi-container orchestration
 LXC: Lean, Clean, Container Machine. 🐧
+Proxmox + Pulumi + Python = Pure Power.

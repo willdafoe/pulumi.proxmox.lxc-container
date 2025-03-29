@@ -1,0 +1,46 @@
+- name: Ensure base packages are present
+  apt:
+    name:
+      - gnupg
+      - curl
+      - ca-certificates
+      - openjdk-17-jre-headless
+      - apt-transport-https
+    state: present
+
+- name: Add MongoDB GPG key
+  apt_key:
+    url: "{{ mongodb_repo_key_url }}"
+    state: present
+
+- name: Add MongoDB APT repository
+  apt_repository:
+    repo: "deb [ arch=amd64 ] {{ mongodb_repo_url }} {{ unifi_codename }}/mongodb-org/{{ mongodb_version }} main"
+    state: present
+    filename: "mongodb-org-{{ mongodb_version }}"
+
+- name: Add UniFi repository
+  apt_repository:
+    repo: "deb {{ unifi_repo_url }} {{ unifi_codename }} ubiquiti"
+    state: present
+    filename: "100-ubnt-unifi"
+
+- name: Add UniFi GPG key
+  apt_key:
+    url: "{{ unifi_gpg_key_url }}"
+    state: present
+
+- name: Update APT cache
+  apt:
+    update_cache: yes
+
+- name: Install UniFi Network Controller
+  apt:
+    name: unifi{{ '=' + unifi_version if unifi_version != 'latest' else '' }}
+    state: present
+
+- name: Ensure unifi service is running
+  systemd:
+    name: unifi
+    enabled: yes
+    state: started

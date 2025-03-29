@@ -4,20 +4,11 @@ import os
 import yaml
 import json
 
-# Read from params file (YAML or JSON)
 PARAMS_FILE = os.getenv("VM_PARAMS_FILE", "vm_params.yaml")
-
-if PARAMS_FILE.endswith(".json"):
-    with open(PARAMS_FILE) as f:
-        params = json.load(f)
-else:
-    with open(PARAMS_FILE) as f:
-        params = yaml.safe_load(f)
+with open(PARAMS_FILE) as f:
+    params = yaml.safe_load(f) if PARAMS_FILE.endswith((".yaml", ".yml")) else json.load(f)
 
 cfg = pulumi.Config("proxmox")
-
-# Construct net0 with static IP info
-net0 = f"name=eth0,bridge={params['bridge']},ip={params['ip']}/{params['cidr']},gw={params['gw']}"
 
 vm_params = {
     "hostname": params["hostname"],
@@ -25,7 +16,7 @@ vm_params = {
     "memory": int(params["memory"]),
     "cores": int(params["cores"]),
     "swap": int(params["swap"]),
-    "net0": net0,
+    "net0": "name=eth0,bridge=vmbr0,ip=dhcp",
     "rootfs": params["rootfs"],
     "password": params["password"]
 }

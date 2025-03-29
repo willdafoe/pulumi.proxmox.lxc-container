@@ -1,0 +1,54 @@
+name: Pulumi Proxmox LXC Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy LXC via Pulumi
+    runs-on: ubuntu-latest
+
+    env:
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      VM_PARAMS_FILE: vm_params.yaml
+
+    steps:
+      - name: 🧱 Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🧪 Install Pulumi
+        uses: pulumi/actions@v4
+
+      - name: 🔐 Pulumi Stack Config
+        run: |
+          pulumi stack init willdafoe/dev || echo "Stack already exists"
+          pulumi config set proxmox:host ${{ secrets.PROXMOX_HOST }} --stack willdafoe/dev
+          pulumi config set proxmox:user ${{ secrets.PROXMOX_USER }} --stack willdafoe/dev
+          pulumi config set proxmox:token_id ${{ secrets.PROXMOX_TOKEN_ID }} --stack willdafoe/dev
+          pulumi config set --secret proxmox:token_secret ${{ secrets.PROXMOX_TOKEN_SECRET }} --stack willdafoe/dev
+          pulumi config set proxmox:node ${{ secrets.PROXMOX_NODE }} --stack willdafoe/dev
+
+      - name: ⚙️ Bootstrap __main__.py
+        run: |
+          ./bootstrap.py --params-file $VM_PARAMS_FILE --no-deploy
+
+      - name: 🚀 Pulumi Up
+        run: |
+          pulumi up --stack willdafoe/dev --yes
+
+      - name: 📤 Output IP
+        run: |
+          echo "Deployed container IP:"
+          pulumi stack output ip_address --stack willdafoe/dev

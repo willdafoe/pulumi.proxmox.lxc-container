@@ -1,0 +1,7 @@
+#SPDX-License-Identifier: MIT-0
+---
+# handlers file for unifi.controller
+- name: restart unifi
+  systemd:
+    name: unifi
+    state: restarted

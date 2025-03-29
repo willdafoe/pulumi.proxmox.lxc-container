@@ -1,0 +1,4 @@
+pulumi
+python-dotenv
+requests
+typer[all]==0.12.0

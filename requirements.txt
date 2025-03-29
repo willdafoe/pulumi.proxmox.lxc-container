@@ -1,3 +1,0 @@
-pulumi
-python-dotenv
-requests

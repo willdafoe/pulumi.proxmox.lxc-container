@@ -15,6 +15,13 @@ preview:
 up:
 	pulumi up --stack $(STACK_NAME) --yes
 
+# Run bootstrap and then run Ansible playbook
+bootstrap:
+	./bootstrap.py --params-file vm_params.yaml
+
+bootstrap+ansible:
+	./bootstrap.py --params-file vm_params.yaml --run-ansible
+
 destroy:
 	pulumi destroy --stack $(STACK_NAME) --yes
 

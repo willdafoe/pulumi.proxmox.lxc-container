@@ -1,0 +1,10 @@
+- name: Wait for UniFi web UI to become available
+  uri:
+    url: http://localhost:8443
+    method: GET
+    status_code: 200
+    validate_certs: no
+  register: unifi_health
+  retries: 10
+  delay: 10
+  until: unifi_health.status == 200

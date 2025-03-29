@@ -1,0 +1,16 @@
+- name: Copy TLS certificate
+  copy:
+    src: "{{ tls_cert_path }}"
+    dest: /var/lib/unifi/keystore.pem
+  when: tls_cert_path != ""
+
+- name: Copy TLS key
+  copy:
+    src: "{{ tls_key_path }}"
+    dest: /var/lib/unifi/private.key
+  when: tls_key_path != ""
+
+- name: Restart UniFi to apply TLS config
+  systemd:
+    name: unifi
+    state: restarted

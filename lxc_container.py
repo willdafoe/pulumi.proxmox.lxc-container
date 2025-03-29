@@ -1,6 +1,8 @@
 import pulumi
+from pulumi import Output
 from pulumi.dynamic import ResourceProvider, Resource, CreateResult, DiffResult, UpdateResult
 from proxmox_api import ProxmoxAPI
+import time
 
 
 class LXCProvider(ResourceProvider):
@@ -13,14 +15,14 @@ class LXCProvider(ResourceProvider):
             node=props["node"]
         )
 
-        # Auto-assign vmid if not provided
+        # Assign VMID
         if "vmid" in props and props["vmid"] is not None:
             vmid = int(float(props["vmid"]))
         else:
             vmid = api.get_next_vmid(starting_from=200)
             props["vmid"] = vmid
 
-        # Normalize numeric params
+        # Normalize numeric values
         params = props["params"].copy()
         for key in ["memory", "cores", "swap"]:
             if key in params:
@@ -35,8 +37,29 @@ class LXCProvider(ResourceProvider):
         pulumi.log.info(f"Starting LXC container {vmid}...")
         api.start_lxc(vmid)
 
-        return CreateResult(id_=f"{props['node']}-{vmid}", outs=props)
+        # Poll for IP address
+        pulumi.log.info(f"Waiting for LXC container {vmid} to receive IP address...")
+        ip_address = None
+        for _ in range(60):  # 60s timeout
+            time.sleep(1)
+            try:
+                status = api.get_lxc_status(vmid).get("data", {})
+                ip_address = status.get("ip")
+                if ip_address:
+                    pulumi.log.info(f"LXC container {vmid} IP address: {ip_address}")
+                    break
+            except Exception as e:
+                pulumi.log.warn(f"Error polling container status: {e}")
+        else:
+            pulumi.log.warn(f"Container {vmid} did not receive IP address within timeout")
 
+        props.update({
+            "hostname": params.get("hostname"),
+            "status": status.get("status"),
+            "ip_address": ip_address,
+        })
+
+        return CreateResult(id_=f"{props['node']}-{vmid}", outs=props)
 
     def delete(self, id, props):
         api = ProxmoxAPI(
@@ -48,30 +71,48 @@ class LXCProvider(ResourceProvider):
         )
 
         vmid = int(float(props["vmid"]))
-        pulumi.log.info(f"Deleting LXC container {vmid} from node {props['node']}")
-        api.delete_lxc(vmid)
+        pulumi.log.info(f"Preparing to delete LXC container {vmid} on node {props['node']}")
 
+        try:
+            status = api.get_lxc_status(vmid).get("data", {})
+            if status.get("status") == "running":
+                pulumi.log.info(f"Stopping LXC container {vmid} before deletion...")
+                api.stop_lxc(vmid)
+
+                for _ in range(30):  # wait up to 30s
+                    time.sleep(1)
+                    try:
+                        current = api.get_lxc_status(vmid).get("data", {})
+                        if current.get("status") != "running":
+                            pulumi.log.info(f"LXC container {vmid} has stopped.")
+                            break
+                    except Exception as e:
+                        pulumi.log.warn(f"Polling shutdown failed: {e}")
+                else:
+                    raise Exception(f"LXC container {vmid} did not stop within timeout.")
+        except Exception as e:
+            pulumi.log.warn(f"Failed to check or stop LXC container {vmid} before deletion: {e}")
+
+        pulumi.log.info(f"Deleting LXC container {vmid}")
+        api.delete_lxc(vmid)
 
     def diff(self, id, olds, news):
         replaces = []
-
         for key in ["vmid", "host", "user", "token_id", "token_secret", "node"]:
             if olds.get(key) != news.get(key):
                 replaces.append(key)
-
         if olds.get("params") != news.get("params"):
             replaces.append("params")
-
         return DiffResult(changes=bool(replaces), replaces=replaces)
 
     def update(self, id, olds, news):
-        pulumi.log.warn("Updates are not implemented. Container will be replaced if changes are detected.")
+        pulumi.log.warn("Update not supported. Replacing container.")
         return UpdateResult(outs=news)
 
 
 class LXCContainer(Resource):
     def __init__(self, name, vmid, host, user, token_id, token_secret, node, params, opts=None):
-        super().__init__(LXCProvider(), name, {
+        args = {
             "vmid": vmid,
             "host": host,
             "user": user,
@@ -79,4 +120,14 @@ class LXCContainer(Resource):
             "token_secret": token_secret,
             "node": node,
             "params": params,
-        }, opts)
+        }
+
+        super().__init__(LXCProvider(), name, args, opts)
+
+        self.vmid = self.get_output("vmid")
+        self.hostname = self.get_output("hostname")
+        self.node = self.get_output("node")
+        self.ip_address = self.get_output("ip_address")
+
+    def get_output(self, name):
+        return getattr(self, name, Output.from_input(None))

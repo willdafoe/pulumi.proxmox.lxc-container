@@ -1,22 +1,38 @@
 import pulumi
 from lxc_container import LXCContainer
+import os
+import yaml
+import json
+
+# Read from params file (YAML or JSON)
+PARAMS_FILE = os.getenv("VM_PARAMS_FILE", "vm_params.yaml")
+
+if PARAMS_FILE.endswith(".json"):
+    with open(PARAMS_FILE) as f:
+        params = json.load(f)
+else:
+    with open(PARAMS_FILE) as f:
+        params = yaml.safe_load(f)
 
 cfg = pulumi.Config("proxmox")
 
+# Construct net0 with static IP info
+net0 = f"name=eth0,bridge={params['bridge']},ip={params['ip']}/{params['cidr']},gw={params['gw']}"
+
 vm_params = {
-    "hostname": "test-container",
-    "ostemplate": "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst",
-    "memory": int(512),
-    "cores": int(1),
-    "swap": int(512),
-    "net0": "name=eth0,bridge=vmbr0,ip=dhcp,ip6=auto",
-    "rootfs": "local:8",
-    "password": "changeme"
+    "hostname": params["hostname"],
+    "ostemplate": params["ostemplate"],
+    "memory": int(params["memory"]),
+    "cores": int(params["cores"]),
+    "swap": int(params["swap"]),
+    "net0": net0,
+    "rootfs": params["rootfs"],
+    "password": params["password"]
 }
 
 container = LXCContainer(
     "test",
-    vmid=int(200),
+    vmid=None,
     host=cfg.require("host"),
     user=cfg.require("user"),
     token_id=cfg.require("token_id"),
@@ -25,7 +41,6 @@ container = LXCContainer(
     params=vm_params
 )
 
-# Export outputs for external tools like Ansible, CI/CD, etc.
 pulumi.export("vmid", container.vmid)
 pulumi.export("hostname", container.hostname)
 pulumi.export("node", container.node)

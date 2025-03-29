@@ -1,0 +1,13 @@
+bridge: vmbr0
+cidr: '28'
+cores: 1
+gw: 10.1.0.145
+hostname: test-container
+ip: 10.1.0.153
+memory: 512
+ostemplate: local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
+params_file: vm_params.yaml
+password: changeme
+rootfs: local:8
+stack: willdafoe/dev
+swap: 512

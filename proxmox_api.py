@@ -57,3 +57,8 @@ class ProxmoxAPI:
         path = f"/nodes/{self.node}/storage/local/content"
         result = self._request("get", path)
         return [item for item in result.get("data", []) if item["content"] == "vztmpl"]
+    
+    def get_next_vmid(self, starting_from=200):
+        res = self._request("get", "/cluster/nextid")
+        nextid = int(res.get("data", starting_from))
+        return max(nextid, starting_from)

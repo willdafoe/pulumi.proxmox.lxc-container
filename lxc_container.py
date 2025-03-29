@@ -37,27 +37,19 @@ class LXCProvider(ResourceProvider):
         pulumi.log.info(f"Starting LXC container {vmid}...")
         api.start_lxc(vmid)
 
-        # Poll for IP address
-        pulumi.log.info(f"Waiting for LXC container {vmid} to receive IP address...")
+        # Extract static IP from net0 config
+        net0 = params.get("net0", "")
         ip_address = None
-        for _ in range(60):  # 60s timeout
-            time.sleep(1)
+        if "ip=" in net0:
             try:
-                status = api.get_lxc_status(vmid).get("data", {})
-                ip_address = status.get("ip")
-                if ip_address:
-                    pulumi.log.info(f"LXC container {vmid} IP address: {ip_address}")
-                    break
+                ip_address = net0.split("ip=")[1].split(",")[0].strip()
+                pulumi.log.info(f"Static IP extracted from net0: {ip_address}")
             except Exception as e:
-                pulumi.log.warn(f"Error polling container status: {e}")
-        else:
-            pulumi.log.warn(f"Container {vmid} did not receive IP address within timeout")
+                pulumi.log.warn(f"Failed to extract static IP from net0: {e}")
 
-        props.update({
-            "hostname": params.get("hostname"),
-            "status": status.get("status"),
-            "ip_address": ip_address,
-        })
+        props["hostname"] = params.get("hostname", f"lxc-{vmid}")
+        props["ip_address"] = ip_address
+        props["status"] = "running"
 
         return CreateResult(id_=f"{props['node']}-{vmid}", outs=props)
 
@@ -79,7 +71,7 @@ class LXCProvider(ResourceProvider):
                 pulumi.log.info(f"Stopping LXC container {vmid} before deletion...")
                 api.stop_lxc(vmid)
 
-                for _ in range(30):  # wait up to 30s
+                for _ in range(30):
                     time.sleep(1)
                     try:
                         current = api.get_lxc_status(vmid).get("data", {})
@@ -91,7 +83,7 @@ class LXCProvider(ResourceProvider):
                 else:
                     raise Exception(f"LXC container {vmid} did not stop within timeout.")
         except Exception as e:
-            pulumi.log.warn(f"Failed to check or stop LXC container {vmid} before deletion: {e}")
+            pulumi.log.warn(f"Failed to check or stop container {vmid} before deletion: {e}")
 
         pulumi.log.info(f"Deleting LXC container {vmid}")
         api.delete_lxc(vmid)
